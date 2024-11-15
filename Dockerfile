@@ -4,5 +4,5 @@ RUN pip install --upgrade pip
 ADD requirements.txt .
 RUN pip install --requirement requirements.txt
 ADD namespace-admission.py .
-EXPOSE 8000
-CMD [ "gunicorn", "-w4", "-b 0.0.0.0", "--access-logfile", "/dev/stdout", "namespace-admission:app" ]
+EXPOSE 443
+CMD [ "gunicorn", "-w4", "--certfile=/certs/tls.crt", "--keyfile=/certs/tls.key", "--bind=0.0.0.0:443", "--access-logfile=/dev/stdout", "namespace-admission:app" ]
