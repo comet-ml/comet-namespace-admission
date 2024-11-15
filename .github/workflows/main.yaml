@@ -1,0 +1,44 @@
+---
+name: build comet action runner on pull-request
+run-name: Build comet action runner ${{ github.ref_name }} by @${{ github.actor }}
+on:
+  push:
+    tags:
+    - "v?[0-9]*.[0-9]*.[0-9]*"
+  schedule:
+  - cron: "55 5 * * *"
+  workflow_dispatch:
+  pull_request:
+    branches:
+    - main
+jobs:
+  build-and-upload:
+    runs-on: summerwind
+    steps:
+    -
+      name: Setup buildx
+      uses: docker/setup-buildx-action@v3
+    -
+      name: get version
+      id: version
+      uses: comet-ml/gha-tools/get-new-tag@main
+    -
+      name: Build
+      uses: docker/build-push-action@v5
+      with:
+        push: true
+        tags: ${{ vars.REGISTRY }}/${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ github.ref_name == 'main' && 'latest' || steps.version.outputs.tag }}
+        build-args: |
+          gh_token=${{ secrets.GH_TOKEN }}
+          DOCKER_REGISTRY=${{ vars.REGISTRY }}
+          TEMPLATE_TAG=${{ vars.TEMPLATE_TAG }}
+    -
+      name: Scan for vulnerabilities
+      uses: crazy-max/ghaction-container-scan@v3
+      id: scan
+      env:
+        DOCKER_TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2,public.ecr.aws/aquasecurity/trivy-db
+      with:
+        image: ${{ vars.REGISTRY }}/${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ github.ref_name == 'main' && 'latest' || steps.version.outputs.tag }}
+        dockerfile: ./Dockerfile
+        annotations: true
