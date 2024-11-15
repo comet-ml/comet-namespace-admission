@@ -68,5 +68,10 @@ def mutate():
         return jsonify({'response': {'allowed': True}})
 
 
+@app.route('/', methods=['GET'])
+def healthcheck():
+    return jsonify({'status': 'Healthy Server'})
+
+
 if __name__ == '__main__':
     app.run(port=8000)

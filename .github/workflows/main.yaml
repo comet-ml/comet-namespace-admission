@@ -1,6 +1,6 @@
 ---
-name: build comet action runner on pull-request
-run-name: Build comet action runner ${{ github.ref_name }} by @${{ github.actor }}
+name: build comet namespace-admission
+run-name: Build comet namespace-admission ${{ github.ref_name }} by @${{ github.actor }}
 on:
   push:
     tags:
