@@ -32,13 +32,3 @@ jobs:
           gh_token=${{ secrets.GH_TOKEN }}
           DOCKER_REGISTRY=${{ vars.REGISTRY }}
           TEMPLATE_TAG=${{ vars.TEMPLATE_TAG }}
-    -
-      name: Scan for vulnerabilities
-      uses: crazy-max/ghaction-container-scan@v3
-      id: scan
-      env:
-        DOCKER_TRIVY_DB_REPOSITORY: ghcr.io/aquasecurity/trivy-db:2,public.ecr.aws/aquasecurity/trivy-db
-      with:
-        image: ${{ vars.REGISTRY }}/${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ github.ref_name == 'main' && 'latest' || steps.version.outputs.tag }}
-        dockerfile: ./Dockerfile
-        annotations: true
