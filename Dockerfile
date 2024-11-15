@@ -5,4 +5,8 @@ ADD requirements.txt .
 RUN pip install --requirement requirements.txt
 ADD namespace-admission.py .
 EXPOSE 443
-CMD [ "gunicorn", "-w4", "--certfile=/certs/tls.crt", "--keyfile=/certs/tls.key", "--bind=0.0.0.0:443", "--access-logfile=/dev/stdout", "namespace-admission:app" ]
+CMD [ "gunicorn", "-w4", \
+    "--certfile=/certs/tls.crt", \
+    "--keyfile=/certs/tls.key", \
+    "--ca-certs=/run/secrets/kubernetes.io/serviceaccount/ca.crt",\
+    "--bind=0.0.0.0:443", "--access-logfile=/dev/stdout", "namespace-admission:app" ]
