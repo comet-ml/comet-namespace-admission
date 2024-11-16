@@ -60,6 +60,8 @@ def mutate():
         ]
 
         response = {
+            'apiVersion': 'admission.k8s.io/v1',
+            'kind': 'AdmissionReview',
             'response': {
                 'uid': request_info['request']['uid'],
                 'allowed': True,
