@@ -59,11 +59,11 @@ def create_or_update_rolebinding(namespace, user):
             name=CLUSTER_ROLE,
         ),
         subjects=[
-            client.V1Subject(
-                kind='User',
-                name=user,
-                api_group='rbac.authorization.k8s.io',
-            ),
+            {
+                'kind': 'User',
+                'name': user,
+                'api_group': 'rbac.authorization.k8s.io',
+            },
         ],
     )
 
