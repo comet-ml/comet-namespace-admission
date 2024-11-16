@@ -18,6 +18,7 @@ CLUSTER_ROLE = 'admin'
 @app.route('/mutate', methods=['POST'])
 def mutate():
     request_info = request.get_json()
+    app.logger.debug(request_info)
     # Check if the request is for a new namespace creation
     if request_info['request']['kind']['kind'] == 'Namespace':
         namespace_name = request_info['request']['object']['metadata']['name']
@@ -65,7 +66,7 @@ def mutate():
                 'patch': json.dumps(patch).encode('utf-8').decode('utf-8'),
             },
         }
-        app.logger.critical(jsonify(response))
+        app.logger.debug(response)
         return jsonify(response)
     else:
         return jsonify({'response': {'allowed': True}})
