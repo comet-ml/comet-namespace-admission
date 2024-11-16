@@ -15,7 +15,9 @@ CLUSTER_ROLE = 'admin'
 
 @app.route('/mutate', methods=['POST'])
 def mutate():
-    request_info = request.get_json()
+    request_info = request.get_json(
+        verify='/run/secrets/kubernetes.io/serviceaccount/ca.crt',
+    )
     # Check if the request is for a new namespace creation
     if request_info['request']['kind']['kind'] == 'Namespace':
         namespace_name = request_info['request']['object']['metadata']['name']
