@@ -1,3 +1,4 @@
+import base64
 import json
 import logging
 
@@ -63,7 +64,7 @@ def mutate():
                 'uid': request_info['request']['uid'],
                 'allowed': True,
                 'patchType': 'JSONPatch',
-                'patch': json.dumps(patch).encode('utf-8').decode('utf-8'),
+                'patch': base64.b64encode(json.dumps(patch).encode('utf-8')).decode('utf-8'),
             },
         }
         app.logger.debug(response)
