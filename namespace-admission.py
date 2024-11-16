@@ -25,32 +25,23 @@ app.logger.debug(config)
 def mutate_namespace():
     # Parse AdmissionReview request
     admission_review = request.json
+    if admission_review['request']['kind']['kind'] == 'Namespace':
+        # Extract the namespace object
+        namespace_name = admission_review['request']['object']['metadata']['name']
 
-    # Extract the namespace object
-    try:
-        namespace = admission_review['request']['object']
-        namespace_name = namespace['metadata']['name']
-        annotations = namespace.get('metadata', {}).get('annotations', {})
-        user = annotations.get('rolebinding/user')
-    except KeyError as e:
-        return create_admission_response(admission_review, allowed=False, message=f"Invalid request structure: {e}")
+        # Create or update RoleBinding
+        try:
+            create_or_update_rolebinding(namespace_name, USER_NAME)
+        except Exception as e:
+            app.logger.error('rolebinding creation failed')
+            return create_admission_response(
+                admission_review,
+                allowed=False,
+                message=f"Failed to create or update RoleBinding: {str(e)}",
+            )
 
-    if not user:
-        # If no relevant annotations, allow request without changes
+        # Allow the namespace creation/update
         return create_admission_response(admission_review, allowed=True)
-
-    # Create or update RoleBinding
-    try:
-        create_or_update_rolebinding(namespace_name, user)
-    except Exception as e:
-        return create_admission_response(
-            admission_review,
-            allowed=False,
-            message=f"Failed to create or update RoleBinding: {str(e)}",
-        )
-
-    # Allow the namespace creation/update
-    return create_admission_response(admission_review, allowed=True)
 
 
 def create_or_update_rolebinding(namespace, user):
@@ -65,7 +56,7 @@ def create_or_update_rolebinding(namespace, user):
         role_ref=client.V1RoleRef(
             api_group='rbac.authorization.k8s.io',
             kind='ClusterRole',
-            name='admin',
+            name=CLUSTER_ROLE,
         ),
         subjects=[
             client.V1Subject(
