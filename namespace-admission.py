@@ -1,4 +1,5 @@
 import json
+import logging
 
 import requests
 from flask import Flask
@@ -6,6 +7,7 @@ from flask import jsonify
 from flask import request
 
 app = Flask(__name__)
+app.logger.setLevel(logging.DEBUG)
 
 # Define the user and cluster role to be bound in each new namespace
 USER_NAME = 'developer'
@@ -63,7 +65,7 @@ def mutate():
                 'patch': json.dumps(patch).encode('utf-8').decode('utf-8'),
             },
         }
-        print(jsonify(response))
+        app.logger.critical(jsonify(response))
         return jsonify(response)
     else:
         return jsonify({'response': {'allowed': True}})
