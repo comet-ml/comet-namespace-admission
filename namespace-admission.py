@@ -21,6 +21,8 @@ CLUSTER_ROLE = 'admin'
 OPERATOR_STARTED = False
 
 config.load_incluster_config()
+v1 = client.CoreV1Api()
+namespaces_watcher = watch.Watch()
 
 
 class operatorClass:
@@ -31,13 +33,8 @@ class operatorClass:
         thread.start()                             # Start the execution
 
     def run(self):
-        config.load_kube_config()
-
-        # Create a V1 Namespace watcher
-        v1 = client.CoreV1Api()
-        w = watch.Watch()
         app.logger.debug('starting event watch loop')
-        for event in w.stream(v1.list_namespace, watch=True):
+        for event in namespaces_watcher.stream(v1.list_namespace, watch=True):
             if event['type'] == 'ADDED':
                 namespace = event['object']
                 namespace_name = namespace.metadata.name
