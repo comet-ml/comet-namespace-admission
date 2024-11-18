@@ -2,12 +2,13 @@ import base64
 import json
 import logging
 
-import requests
 from flask import Flask
 from flask import jsonify
 from flask import request
 from kubernetes import client
 from kubernetes import config
+from kubernetes import watch
+# import requests
 
 app = Flask(__name__)
 app.logger.setLevel(logging.DEBUG)
@@ -18,30 +19,68 @@ GROUP_NAME = 'developers'
 CLUSTER_ROLE = 'admin'
 
 config.load_incluster_config()
-app.logger.debug(config)
+
+
+@app.route('/', methods=['GET'])
+def healthcheck():
+    return jsonify({'status': 'Healthy Server'})
 
 
 @app.route('/mutate', methods=['POST'])
-def mutate_namespace():
-    # Parse AdmissionReview request
-    admission_review = request.json
+def mutate():
+    admission_review = request.get_json()
+    # Check if the request is for a new namespace creation
     if admission_review['request']['kind']['kind'] == 'Namespace':
-        # Extract the namespace object
         namespace_name = admission_review['request']['object']['metadata']['name']
+        app.logger.debug(admission_review)
+        # RoleBinding to give admin access to the user in the new namespace
+        rolebinding = {
+            'apiVersion': 'rbac.authorization.k8s.io/v1',
+            'kind': 'RoleBinding',
+            'metadata': {
+                'name': f"{USER_NAME}-admin",
+                'namespace': namespace_name,
+            },
+            'roleRef': {
+                'apiGroup': 'rbac.authorization.k8s.io',
+                'kind': 'ClusterRole',
+                'name': CLUSTER_ROLE,
+            },
+            'subjects': [
+                {
+                    'kind': 'User',
+                    'name': USER_NAME,
+                    'apiGroup': 'rbac.authorization.k8s.io',
+                }, {
+                    'kind': 'Group',
+                    'name': GROUP_NAME,
+                    'apiGroup': 'rbac.authorization.k8s.io',
+                },
+            ],
+        }
 
-        # Create or update RoleBinding
-        try:
-            create_or_update_rolebinding(namespace_name, USER_NAME)
-        except Exception as e:
-            app.logger.error('rolebinding creation failed')
-            return create_admission_response(
-                admission_review,
-                allowed=False,
-                message=f"Failed to create or update RoleBinding: {str(e)}",
-            )
+        # Patch the namespace creation request to include the RoleBinding
+        patch = [
+            {
+                'op': 'add',
+                'path': '/metadata/annotations',
+                'value': {'rolebinding': json.dumps(rolebinding)},
+            },
+        ]
 
-        # Allow the namespace creation/update
-        return create_admission_response(admission_review, allowed=True)
+        response = {
+            'apiVersion': 'admission.k8s.io/v1',
+            'kind': 'AdmissionReview',
+            'response': {
+                'uid': admission_review['request']['uid'],
+                'allowed': True,
+                'patchType': 'JSONPatch',
+                'patch': base64.b64encode(json.dumps(patch).encode('utf-8')).decode('utf-8'),
+            },
+        }
+        return jsonify(response)
+
+    return create_admission_response(admission_review, allowed=True)
 
 
 def create_or_update_rolebinding(namespace, user):
@@ -100,66 +139,20 @@ def create_admission_response(admission_review, allowed, message=None):
     return jsonify(response)
 
 
-def mutate():
-    request_info = request.get_json()
-    # Check if the request is for a new namespace creation
-    if request_info['request']['kind']['kind'] == 'Namespace':
-        namespace_name = request_info['request']['object']['metadata']['name']
+def operator():
+    config.load_kube_config()
 
-        # RoleBinding to give admin access to the user in the new namespace
-        rolebinding = {
-            'apiVersion': 'rbac.authorization.k8s.io/v1',
-            'kind': 'RoleBinding',
-            'metadata': {
-                'name': f"{USER_NAME}-admin",
-                'namespace': namespace_name,
-            },
-            'roleRef': {
-                'apiGroup': 'rbac.authorization.k8s.io',
-                'kind': 'ClusterRole',
-                'name': CLUSTER_ROLE,
-            },
-            'subjects': [
-                {
-                    'kind': 'User',
-                    'name': USER_NAME,
-                    'apiGroup': 'rbac.authorization.k8s.io',
-                }, {
-                    'kind': 'Group',
-                    'name': GROUP_NAME,
-                    'apiGroup': 'rbac.authorization.k8s.io',
-                },
-            ],
-        }
-
-        # Patch the namespace creation request to include the RoleBinding
-        patch = [
-            {
-                'op': 'add',
-                'path': '/metadata/annotations',
-                'value': {'rolebinding': json.dumps(rolebinding)},
-            },
-        ]
-
-        response = {
-            'apiVersion': 'admission.k8s.io/v1',
-            'kind': 'AdmissionReview',
-            'response': {
-                'uid': request_info['request']['uid'],
-                'allowed': True,
-                'patchType': 'JSONPatch',
-                'patch': base64.b64encode(json.dumps(patch).encode('utf-8')).decode('utf-8'),
-            },
-        }
-        return jsonify(response)
-    else:
-        return jsonify({'response': {'allowed': True}})
-
-
-@app.route('/', methods=['GET'])
-def healthcheck():
-    return jsonify({'status': 'Healthy Server'})
+    # Create a V1 Namespace watcher
+    v1 = client.CoreV1Api()
+    w = watch.Watch()
+    for event in w.stream(v1.list_namespace, watch=True):
+        if event['type'] == 'ADDED':
+            namespace = event['object']
+            namespace_name = namespace.metadata.name
+            app.logger.debug(event)
+            create_or_update_rolebinding(namespace_name, USER_NAME)
+    app.run(port=8000)
 
 
 if __name__ == '__main__':
-    app.run(port=8000)
+    operator()
