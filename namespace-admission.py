@@ -1,6 +1,7 @@
 import base64
 import json
 import logging
+import threading
 
 from flask import Flask
 from flask import jsonify
@@ -17,12 +18,40 @@ app.logger.setLevel(logging.DEBUG)
 USER_NAME = 'developer'
 GROUP_NAME = 'developers'
 CLUSTER_ROLE = 'admin'
+OPERATOR_STARTED = False
 
 config.load_incluster_config()
 
 
+class operatorClass:
+
+    def __init__(self):
+        thread = threading.Thread(target=self.run, args=())
+        thread.daemon = True                       # Daemonize thread
+        thread.start()                             # Start the execution
+
+    def run(self):
+        config.load_kube_config()
+
+        # Create a V1 Namespace watcher
+        v1 = client.CoreV1Api()
+        w = watch.Watch()
+        app.logger.debug('starting event watch loop')
+        for event in w.stream(v1.list_namespace, watch=True):
+            if event['type'] == 'ADDED':
+                namespace = event['object']
+                namespace_name = namespace.metadata.name
+                app.logger.debug(event)
+                create_or_update_rolebinding(namespace_name, USER_NAME)
+
+
 @app.route('/', methods=['GET'])
 def healthcheck():
+    global OPERATOR_STARTED
+    if not OPERATOR_STARTED:
+        begin = operatorClass()
+        app.logger.debug(begin)
+        OPERATOR_STARTED = True
     return jsonify({'status': 'Healthy Server'})
 
 
@@ -139,20 +168,5 @@ def create_admission_response(admission_review, allowed, message=None):
     return jsonify(response)
 
 
-def operator():
-    config.load_kube_config()
-
-    # Create a V1 Namespace watcher
-    v1 = client.CoreV1Api()
-    w = watch.Watch()
-    for event in w.stream(v1.list_namespace, watch=True):
-        if event['type'] == 'ADDED':
-            namespace = event['object']
-            namespace_name = namespace.metadata.name
-            app.logger.debug(event)
-            create_or_update_rolebinding(namespace_name, USER_NAME)
-    app.run(port=8000)
-
-
 if __name__ == '__main__':
-    operator()
+    app.run(port=8000)
