@@ -35,11 +35,13 @@ class operatorClass:
     def run(self):
         app.logger.debug('starting event watch loop')
         for event in namespaces_watcher.stream(v1.list_namespace, watch=True):
-            if event['type'] == 'ADDED':
-                namespace = event['object']
-                namespace_name = namespace.metadata.name
-                app.logger.debug(event)
-                create_or_update_rolebinding(namespace_name, USER_NAME)
+            # TODO: update only namespaces with correct annotation
+            app.logger.debug(f'OPERATOR {event}')
+
+            # if event['type'] == 'ADDED':
+            #     namespace = event['object']
+            #     namespace_name = namespace.metadata.name
+            #     create_or_update_rolebinding(namespace_name, USER_NAME)
 
 
 @app.route('/', methods=['GET'])
@@ -57,40 +59,13 @@ def mutate():
     admission_review = request.get_json()
     # Check if the request is for a new namespace creation
     if admission_review['request']['kind']['kind'] == 'Namespace':
-        namespace_name = admission_review['request']['object']['metadata']['name']
-        app.logger.debug(admission_review)
-        # RoleBinding to give admin access to the user in the new namespace
-        rolebinding = {
-            'apiVersion': 'rbac.authorization.k8s.io/v1',
-            'kind': 'RoleBinding',
-            'metadata': {
-                'name': f"{USER_NAME}-admin",
-                'namespace': namespace_name,
-            },
-            'roleRef': {
-                'apiGroup': 'rbac.authorization.k8s.io',
-                'kind': 'ClusterRole',
-                'name': CLUSTER_ROLE,
-            },
-            'subjects': [
-                {
-                    'kind': 'User',
-                    'name': USER_NAME,
-                    'apiGroup': 'rbac.authorization.k8s.io',
-                }, {
-                    'kind': 'Group',
-                    'name': GROUP_NAME,
-                    'apiGroup': 'rbac.authorization.k8s.io',
-                },
-            ],
-        }
+        app.logger.debug(f'ADMISSION_REVIEW {admission_review}')
 
-        # Patch the namespace creation request to include the RoleBinding
         patch = [
             {
                 'op': 'add',
                 'path': '/metadata/annotations',
-                'value': {'rolebinding': json.dumps(rolebinding)},
+                'value': {'com.comet/ns-admin': USER_NAME},
             },
         ]
 
