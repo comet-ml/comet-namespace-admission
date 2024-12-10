@@ -36,7 +36,7 @@ class operatorClass:
         app.logger.debug('starting event watch loop')
         for event in namespaces_watcher.stream(v1.list_namespace, watch=True):
             # TODO: update only namespaces with correct annotation
-            app.logger.debug(f'OPERATOR {event.dumps()}')
+            app.logger.debug(f'OPERATOR {json.dumps(event)}')
 
             # if event['type'] == 'ADDED':
             #     namespace = event['object']
@@ -57,7 +57,7 @@ def healthcheck():
 @app.route('/mutate', methods=['POST'])
 def mutate():
     admission_review = request.get_json()
-    app.logger.debug(f'ADMISSION_REVIEW {admission_review.dumps()}')
+    app.logger.debug(f'ADMISSION_REVIEW {json.dumps(admission_review)}')
     # Check if the request is for a new namespace creation
     userInfo = admission_review['request']['userInfo']
     namespace = admission_review['request']['namespace']
