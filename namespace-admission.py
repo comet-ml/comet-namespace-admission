@@ -36,7 +36,7 @@ class operatorClass:
         app.logger.debug('starting event watch loop')
         for event in namespaces_watcher.stream(v1.list_namespace, watch=True):
             # TODO: update only namespaces with correct annotation
-            app.logger.debug(f'OPERATOR {event}')
+            app.logger.debug(f'OPERATOR {event.dumps()}')
 
             # if event['type'] == 'ADDED':
             #     namespace = event['object']
@@ -57,15 +57,25 @@ def healthcheck():
 @app.route('/mutate', methods=['POST'])
 def mutate():
     admission_review = request.get_json()
+    app.logger.debug(f'ADMISSION_REVIEW {admission_review.dumps()}')
     # Check if the request is for a new namespace creation
-    if admission_review['request']['kind']['kind'] == 'Namespace':
-        app.logger.debug(f'ADMISSION_REVIEW {admission_review}')
+    userInfo = admission_review['request']['userInfo']
+    namespace = admission_review['request']['namespace']
+    sessionName = userInfo['extra']['sessionName']
+    validNamespace = namespace.startswith(
+        'dev-',
+    ) or namespace.startswith(f'{sessionName}-')
+    # only allow to create dev-* <user>-* namespaces
+    if admission_review['request']['kind']['kind'] == 'Namespace' and validNamespace and userInfo['username'] == USER_NAME:
 
         patch = [
             {
                 'op': 'add',
                 'path': '/metadata/annotations',
-                'value': {'com.comet/ns-admin': USER_NAME},
+                'value': {
+                    'com.comet/ns-admin': USER_NAME,
+                    'com.comet/ns-creator': sessionName,
+                },
             },
         ]
 
