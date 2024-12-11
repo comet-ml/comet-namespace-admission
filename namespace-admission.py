@@ -36,7 +36,7 @@ class operatorClass:
         app.logger.debug('starting event watch loop')
         for event in namespaces_watcher.stream(v1.list_namespace, watch=True):
             # TODO: update only namespaces with correct annotation
-            app.logger.debug(f'OPERATOR {event}', stack_info=True)
+            app.logger.debug(f'OPERATOR {event}')
 
             if event['type'] == 'ADDED':
                 namespace = event['object']
@@ -45,7 +45,7 @@ class operatorClass:
                     namespace_admin = namespace.metadata.annotations['com.comet/ns-admin']
                 except (TypeError, KeyError) as e:
                     app.logger.debug(
-                        f'OPERATOR exception {e}', stack_info=True,
+                        f'OPERATOR exception {e}',
                     )
                     namespace_admin = None
                 # namespace_creator = namespace.metadata.annotations['com.comet/ns-creator']
