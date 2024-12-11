@@ -36,7 +36,7 @@ class operatorClass:
         app.logger.debug('starting event watch loop')
         for event in namespaces_watcher.stream(v1.list_namespace, watch=True):
             # TODO: update only namespaces with correct annotation
-            app.logger.debug(f'OPERATOR {json.dumps(event)}')
+            app.logger.debug(f'OPERATOR {event}')
 
             # if event['type'] == 'ADDED':
             #     namespace = event['object']
