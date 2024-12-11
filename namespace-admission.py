@@ -38,10 +38,13 @@ class operatorClass:
             # TODO: update only namespaces with correct annotation
             app.logger.debug(f'OPERATOR {event}')
 
-            # if event['type'] == 'ADDED':
-            #     namespace = event['object']
-            #     namespace_name = namespace.metadata.name
-            #     create_or_update_rolebinding(namespace_name, USER_NAME)
+            if event['type'] == 'ADDED':
+                namespace = event['object']
+                namespace_name = namespace.metadata.name
+                namespace_admin = namespace.metadata.annotations['com.comet/ns-admin']
+                # namespace_creator = namespace.metadata.annotations['com.comet/ns-creator']
+                if namespace_admin == USER_NAME:
+                    create_or_update_rolebinding(namespace_name, USER_NAME)
 
 
 @app.route('/', methods=['GET'])
