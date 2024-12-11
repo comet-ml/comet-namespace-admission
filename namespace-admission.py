@@ -106,14 +106,28 @@ def mutate():
                         creator = admission_review['request']['oldObject']['metadata']['annotations']['com.comet/ns-creator']
                     except KeyError:
                         creator = None
-                    response = {
-                        'apiVersion': 'admission.k8s.io/v1',
-                        'kind': 'AdmissionReview',
-                        'response': {
-                            'uid': admission_review['request']['uid'],
-                            'allowed': sessionName == creator,
-                        },
-                    }
+                    if sessionName == creator:
+                        response = {
+                            'apiVersion': 'admission.k8s.io/v1',
+                            'kind': 'AdmissionReview',
+                            'response': {
+                                'uid': admission_review['request']['uid'],
+                                'allowed': True,
+                            },
+                        }
+                    else:
+                        response = {
+                            'apiVersion': 'admission.k8s.io/v1',
+                            'kind': 'AdmissionReview',
+                            'response': {
+                                'uid': admission_review['request']['uid'],
+                                'allowed': False,
+                                'status': {
+                                    'code': 403,
+                                    'message': f'You ({sessionName}) is not the owner ({{creator}}) of namespace {namespace}',
+                                },
+                            },
+                        }
         else:
             response = {
                 'apiVersion': 'admission.k8s.io/v1',
