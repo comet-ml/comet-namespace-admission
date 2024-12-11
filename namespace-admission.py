@@ -36,12 +36,18 @@ class operatorClass:
         app.logger.debug('starting event watch loop')
         for event in namespaces_watcher.stream(v1.list_namespace, watch=True):
             # TODO: update only namespaces with correct annotation
-            app.logger.debug(f'OPERATOR {event}')
+            app.logger.debug(f'OPERATOR {event}', stack_info=True)
 
             if event['type'] == 'ADDED':
                 namespace = event['object']
                 namespace_name = namespace.metadata.name
-                namespace_admin = namespace.metadata.annotations['com.comet/ns-admin']
+                try:
+                    namespace_admin = namespace.metadata.annotations['com.comet/ns-admin']
+                except (TypeError, KeyError) as e:
+                    app.logger.debug(
+                        f'OPERATOR exception {e}', stack_info=True,
+                    )
+                    namespace_admin = None
                 # namespace_creator = namespace.metadata.annotations['com.comet/ns-creator']
                 if namespace_admin == USER_NAME:
                     create_or_update_rolebinding(namespace_name, USER_NAME)
