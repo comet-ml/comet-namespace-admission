@@ -79,8 +79,8 @@ def mutate():
 
     if admission_review['request']['kind']['kind'] == 'Namespace' and userInfo['username'] == USER_NAME:
         if validNamespace:
-            match request.method:
-                case 'POST':
+            match admission_review['request']['operation']:
+                case 'CREATE':
                     patch = [
                         {
                             'op': 'add',
@@ -102,12 +102,16 @@ def mutate():
                         },
                     }
                 case 'DELETE':
+                    try:
+                        creator = admission_review['request']['oldObject']['metadata']['annotations']['com.comet/ns-creator']
+                    except KeyError:
+                        creator = None
                     response = {
                         'apiVersion': 'admission.k8s.io/v1',
                         'kind': 'AdmissionReview',
                         'response': {
                             'uid': admission_review['request']['uid'],
-                            'allowed': True,
+                            'allowed': sessionName == creator,
                         },
                     }
         else:
