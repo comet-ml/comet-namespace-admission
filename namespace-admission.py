@@ -61,7 +61,7 @@ def mutate():
     # Check if the request is for a new namespace creation
     userInfo = admission_review['request']['userInfo']
     namespace = admission_review['request']['namespace']
-    sessionName = userInfo['extra']['sessionName']
+    sessionName = userInfo['extra']['sessionName'][0]
     validNamespace = namespace.startswith(
         'dev-',
     ) or namespace.startswith(f'{sessionName}-')
