@@ -28,9 +28,12 @@ namespaces_watcher = watch.Watch()
 class operatorClass:
 
     def __init__(self):
-        thread = threading.Thread(target=self.run, args=())
-        thread.daemon = True                       # Daemonize thread
-        thread.start()                             # Start the execution
+        self.thread = threading.Thread(target=self.run, args=())
+        self.thread.daemon = True                       # Daemonize thread
+        self.thread.start()                             # Start the execution
+
+    def is_alive(self):
+        return self.thread.is_alive()
 
     def run(self):
         app.logger.debug('starting event watch loop')
