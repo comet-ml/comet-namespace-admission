@@ -17,7 +17,7 @@ app.logger.setLevel(logging.DEBUG)
 # Define the user and cluster role to be bound in each new namespace
 USER_NAME = 'developer'
 GROUP_NAME = 'developers'
-CLUSTER_ROLE = 'admin'
+CLUSTER_ROLE = 'cluster-admin'
 OPERATOR_STARTED = False
 
 config.load_incluster_config()
