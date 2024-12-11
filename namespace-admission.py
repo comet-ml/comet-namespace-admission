@@ -66,8 +66,7 @@ def mutate():
         'dev-',
     ) or namespace.startswith(f'{sessionName}-')
     # only allow to create dev-* <user>-* namespaces
-    if admission_review['request']['kind']['kind'] == 'Namespace' and validNamespace and userInfo['username'] == USER_NAME:
-
+    if admission_review['request']['kind']['kind'] == 'Namespace' and userInfo['username'] == USER_NAME:
         patch = [
             {
                 'op': 'add',
@@ -78,17 +77,30 @@ def mutate():
                 },
             },
         ]
-
-        response = {
-            'apiVersion': 'admission.k8s.io/v1',
-            'kind': 'AdmissionReview',
-            'response': {
-                'uid': admission_review['request']['uid'],
-                'allowed': True,
-                'patchType': 'JSONPatch',
-                'patch': base64.b64encode(json.dumps(patch).encode('utf-8')).decode('utf-8'),
-            },
-        }
+        if validNamespace:
+            response = {
+                'apiVersion': 'admission.k8s.io/v1',
+                'kind': 'AdmissionReview',
+                'response': {
+                    'uid': admission_review['request']['uid'],
+                    'allowed': True,
+                    'patchType': 'JSONPatch',
+                    'patch': base64.b64encode(json.dumps(patch).encode('utf-8')).decode('utf-8'),
+                },
+            }
+        else:
+            response = {
+                'apiVersion': 'admission.k8s.io/v1',
+                'kind': 'AdmissionReview',
+                'response': {
+                    'uid': admission_review['request']['uid'],
+                    'allowed': False,
+                    'status': {
+                        'code': 403,
+                        'message': f'namespace {namespace} is not allowed for {USER_NAME}/{sessionName}. please use prefix "dev-" or "{sessionName}-"',
+                    },
+                },
+            }
         return jsonify(response)
 
     return create_admission_response(admission_review, allowed=True)
