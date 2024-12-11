@@ -18,7 +18,7 @@ app.logger.setLevel(logging.DEBUG)
 USER_NAME = 'developer'
 GROUP_NAME = 'developers'
 CLUSTER_ROLE = 'admin'
-OPERATOR_TREAD = False
+OPERATOR_THREAD = False
 
 config.load_incluster_config()
 v1 = client.CoreV1Api()
