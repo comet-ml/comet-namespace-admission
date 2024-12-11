@@ -17,8 +17,8 @@ app.logger.setLevel(logging.DEBUG)
 # Define the user and cluster role to be bound in each new namespace
 USER_NAME = 'developer'
 GROUP_NAME = 'developers'
-CLUSTER_ROLE = 'cluster-admin'
-OPERATOR_STARTED = False
+CLUSTER_ROLE = 'admin'
+OPERATOR_TREAD = False
 
 config.load_incluster_config()
 v1 = client.CoreV1Api()
@@ -48,24 +48,23 @@ class operatorClass:
                         f'OPERATOR exception {e}',
                     )
                     namespace_admin = None
-                # namespace_creator = namespace.metadata.annotations['com.comet/ns-creator']
                 if namespace_admin == USER_NAME:
                     create_or_update_rolebinding(namespace_name, USER_NAME)
 
 
 @app.route('/', methods=['GET'])
 def healthcheck():
-    global OPERATOR_STARTED
-    if not OPERATOR_STARTED:
-        begin = operatorClass()
-        app.logger.debug(begin)
-        OPERATOR_STARTED = True
+    global OPERATOR_THREAD
+    if not OPERATOR_THREAD or not OPERATOR_THREAD.is_alive():
+        OPERATOR_THREAD = operatorClass()
+        app.logger.debug(f'OPERATOR start thread {OPERATOR_THREAD}')
     return jsonify({'status': 'Healthy Server'})
 
 
 @app.route('/mutate', methods=['POST'])
 def mutate():
     admission_review = request.get_json()
+    app.logger.debug(f'REQUEST {request}')
     app.logger.debug(f'ADMISSION_REVIEW {json.dumps(admission_review)}')
     # Check if the request is for a new namespace creation
     userInfo = admission_review['request']['userInfo']
@@ -75,6 +74,7 @@ def mutate():
         'dev-',
     ) or namespace.startswith(f'{sessionName}-')
     # only allow to create dev-* <user>-* namespaces
+
     if admission_review['request']['kind']['kind'] == 'Namespace' and userInfo['username'] == USER_NAME:
         patch = [
             {
