@@ -64,10 +64,9 @@ def healthcheck():
     return jsonify({'status': 'Healthy Server'})
 
 
-@app.route('/mutate', methods=['POST'])
+@app.route('/mutate', methods=['POST', 'DELETE'])
 def mutate():
     admission_review = request.get_json()
-    app.logger.debug(f'REQUEST {request}')
     app.logger.debug(f'ADMISSION_REVIEW {json.dumps(admission_review)}')
     # Check if the request is for a new namespace creation
     userInfo = admission_review['request']['userInfo']
@@ -79,27 +78,38 @@ def mutate():
     # only allow to create dev-* <user>-* namespaces
 
     if admission_review['request']['kind']['kind'] == 'Namespace' and userInfo['username'] == USER_NAME:
-        patch = [
-            {
-                'op': 'add',
-                'path': '/metadata/annotations',
-                'value': {
-                    'com.comet/ns-admin': USER_NAME,
-                    'com.comet/ns-creator': sessionName,
-                },
-            },
-        ]
         if validNamespace:
-            response = {
-                'apiVersion': 'admission.k8s.io/v1',
-                'kind': 'AdmissionReview',
-                'response': {
-                    'uid': admission_review['request']['uid'],
-                    'allowed': True,
-                    'patchType': 'JSONPatch',
-                    'patch': base64.b64encode(json.dumps(patch).encode('utf-8')).decode('utf-8'),
-                },
-            }
+            match request.method:
+                case 'POST':
+                    patch = [
+                        {
+                            'op': 'add',
+                            'path': '/metadata/annotations',
+                            'value': {
+                                'com.comet/ns-admin': USER_NAME,
+                                'com.comet/ns-creator': sessionName,
+                            },
+                        },
+                    ]
+                    response = {
+                        'apiVersion': 'admission.k8s.io/v1',
+                        'kind': 'AdmissionReview',
+                        'response': {
+                            'uid': admission_review['request']['uid'],
+                            'allowed': True,
+                            'patchType': 'JSONPatch',
+                            'patch': base64.b64encode(json.dumps(patch).encode('utf-8')).decode('utf-8'),
+                        },
+                    }
+                case 'DELETE':
+                    response = {
+                        'apiVersion': 'admission.k8s.io/v1',
+                        'kind': 'AdmissionReview',
+                        'response': {
+                            'uid': admission_review['request']['uid'],
+                            'allowed': True,
+                        },
+                    }
         else:
             response = {
                 'apiVersion': 'admission.k8s.io/v1',
