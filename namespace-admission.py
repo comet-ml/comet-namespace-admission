@@ -101,6 +101,7 @@ def mutate():
                     },
                 },
             }
+        app.logger.debug(f'ADMISSION_RESPONSE {json.dumps(response)}')
         return jsonify(response)
 
     return create_admission_response(admission_review, allowed=True)
