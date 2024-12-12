@@ -14,7 +14,7 @@ repos:
       - id: destroyed-symlinks
       - id: check-toml
       - id: check-yaml
-        exclude: ^helm/.*/templates/
+        exclude: ^charts/.*/templates/
       - id: debug-statements
       - id: check-vcs-permalinks
       - id: check-xml

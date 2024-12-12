@@ -4,7 +4,7 @@ run-name: "Helm for ${{ github.repository_owner }}/${{ github.event.repository.n
 on:
   push:
     paths:
-    - helm/**
+    - charts/**
 
 jobs:
   helm-upload:
