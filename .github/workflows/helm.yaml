@@ -5,6 +5,7 @@ on:
   push:
     paths:
     - charts/**
+    - .github/workflows/helm.yaml
 
 jobs:
   helm-upload:
