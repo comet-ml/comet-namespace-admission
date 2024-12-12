@@ -1,0 +1,33 @@
+name: "Helm Operations"
+run-name: "Helm for ${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ github.ref_name }} by @${{ github.actor }}: ${{ github.event.commits[0].message }}"
+
+on:
+  push:
+    tags:
+    - "v?[0-9]*.[0-9]*.[0-9]*"
+    paths:
+    - helm/**
+
+jobs:
+  helm-upload:
+    runs-on: helm
+
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: helm lint
+      id: helm-lint
+      shell: bash
+      run: |
+        helm lint helm/*/
+
+    - name: package and upload to s3
+      uses: comet-ml/helm_upload@main
+      with:
+        role-session-name: ${{ vars.ROLE_SESSION_NAME }}
+        role-arn: ${{ vars.ROLE_ARN }}
+        helm-registry: s3://comet-dev-repositories/charts
+        helm-push-extra: --force
