@@ -13,12 +13,16 @@ from kubernetes import watch
 # import requests
 
 app = Flask(__name__)
-app.logger.setLevel(logging.DEBUG)
 
 # Define the user and cluster role to be bound in each new namespace
 USER_NAME = os.getenv('USER_NAME', 'developer')
 CLUSTER_ROLE = os.getenv('CLUSTER_ROLE', 'admin')
 OPERATOR_THREAD = False
+LOG_LEVEL = logging.getLevelNamesMapping(
+    os.getenv('LOG_LEVEL', 'INFO').upper(),
+)
+
+app.logger.setLevel(LOG_LEVEL)
 
 config.load_incluster_config()
 v1 = client.CoreV1Api()
@@ -36,7 +40,7 @@ class operatorClass:
         return self.thread.is_alive()
 
     def run(self):
-        app.logger.debug('OPERATOR: starting event watch loop')
+        app.logger.info('OPERATOR: starting event watch loop')
         for event in namespaces_watcher.stream(v1.list_namespace, watch=True):
             if event['type'] == 'ADDED':
                 namespace = event['object']
@@ -47,7 +51,7 @@ class operatorClass:
                     namespace_admin = None
                 if namespace_admin == USER_NAME:
                     create_or_update_rolebinding(namespace_name, USER_NAME)
-                    app.logger.debug(
+                    app.logger.info(
                         f'OPERATOR: rolebinding for {namespace_name} has been updated',
                     )
 
@@ -57,7 +61,7 @@ def healthcheck():
     global OPERATOR_THREAD
     if not OPERATOR_THREAD or not OPERATOR_THREAD.is_alive():
         OPERATOR_THREAD = operatorClass()
-        app.logger.debug('OPERATOR: start operator thread')
+        app.logger.info('OPERATOR: start operator thread')
     return jsonify({'status': 'Healthy Server'})
 
 
@@ -118,7 +122,7 @@ def mutate():
                                 'allowed': False,
                                 'status': {
                                     'code': 403,
-                                    'message': f'You ({sessionName}) is not the owner ({{creator}}) of namespace {namespace}',
+                                    'message': f'You ({sessionName}) is not the owner ({creator}) of namespace {namespace}',
                                 },
                             },
                         }
@@ -135,7 +139,7 @@ def mutate():
                     },
                 },
             }
-        app.logger.debug(
+        app.logger.info(
             f'ADMISSION_CONTROLLER: namespace={namespace} operation={admission_review['request']['operation']} allowed={response['response']['allowed']} user={USER_NAME}/{sessionName}',
         )
         return jsonify(response)

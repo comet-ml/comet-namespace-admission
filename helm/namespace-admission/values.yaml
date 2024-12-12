@@ -110,7 +110,7 @@ autoscaling:
 volumes:
 - name: certs
   secret:
-    secretName: namespace-admission
+    secretName: namespace-admission-certs
     optional: false
 
 # Additional volumeMounts on the output Deployment definition.
@@ -127,3 +127,13 @@ affinity: {}
 
 userName: developer
 clusterRole: admin
+externalSecrets:
+  - name: namespace-admission-certs
+    refreshInterval: 60m
+    dataFrom:
+      - extract:
+          key: cometml/development/namespace-admission/certs
+          conversionStrategy: Default
+          decodingStrategy: None
+    template:
+      type: kubernetes.io/tls
