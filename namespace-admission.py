@@ -1,6 +1,7 @@
 import base64
 import json
 import logging
+import os
 import threading
 
 from flask import Flask
@@ -15,9 +16,8 @@ app = Flask(__name__)
 app.logger.setLevel(logging.DEBUG)
 
 # Define the user and cluster role to be bound in each new namespace
-USER_NAME = 'developer'
-GROUP_NAME = 'developers'
-CLUSTER_ROLE = 'admin'
+USER_NAME = os.getenv('USER_NAME', 'developer')
+CLUSTER_ROLE = os.getenv('CLUSTER_ROLE', 'admin')
 OPERATOR_THREAD = False
 
 config.load_incluster_config()
@@ -36,23 +36,20 @@ class operatorClass:
         return self.thread.is_alive()
 
     def run(self):
-        app.logger.debug('starting event watch loop')
+        app.logger.debug('OPERATOR: starting event watch loop')
         for event in namespaces_watcher.stream(v1.list_namespace, watch=True):
-            # TODO: update only namespaces with correct annotation
-            app.logger.debug(f'OPERATOR {event}')
-
             if event['type'] == 'ADDED':
                 namespace = event['object']
                 namespace_name = namespace.metadata.name
                 try:
                     namespace_admin = namespace.metadata.annotations['com.comet/ns-admin']
-                except (TypeError, KeyError) as e:
-                    app.logger.debug(
-                        f'OPERATOR exception {e}',
-                    )
+                except (TypeError, KeyError):
                     namespace_admin = None
                 if namespace_admin == USER_NAME:
                     create_or_update_rolebinding(namespace_name, USER_NAME)
+                    app.logger.debug(
+                        f'OPERATOR: rolebinding for {namespace_name} has been updated',
+                    )
 
 
 @app.route('/', methods=['GET'])
@@ -60,22 +57,19 @@ def healthcheck():
     global OPERATOR_THREAD
     if not OPERATOR_THREAD or not OPERATOR_THREAD.is_alive():
         OPERATOR_THREAD = operatorClass()
-        app.logger.debug(f'OPERATOR start thread {OPERATOR_THREAD}')
+        app.logger.debug('OPERATOR: start operator thread')
     return jsonify({'status': 'Healthy Server'})
 
 
 @app.route('/mutate', methods=['POST', 'DELETE'])
 def mutate():
     admission_review = request.get_json()
-    app.logger.debug(f'ADMISSION_REVIEW {json.dumps(admission_review)}')
-    # Check if the request is for a new namespace creation
     userInfo = admission_review['request']['userInfo']
     namespace = admission_review['request']['namespace']
     sessionName = userInfo['extra']['sessionName'][0]
     validNamespace = namespace.startswith(
         'dev-',
     ) or namespace.startswith(f'{sessionName}-')
-    # only allow to create dev-* <user>-* namespaces
 
     if admission_review['request']['kind']['kind'] == 'Namespace' and userInfo['username'] == USER_NAME:
         if validNamespace:
@@ -141,7 +135,9 @@ def mutate():
                     },
                 },
             }
-        app.logger.debug(f'ADMISSION_RESPONSE {json.dumps(response)}')
+        app.logger.debug(
+            f'ADMISSION_CONTROLLER: namespace={namespace} operation={admission_review['request']['operation']} allowed={response['response']['allowed']} user={USER_NAME}/{sessionName}',
+        )
         return jsonify(response)
 
     return create_admission_response(admission_review, allowed=True)

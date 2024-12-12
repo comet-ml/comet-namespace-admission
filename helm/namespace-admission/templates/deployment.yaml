@@ -36,6 +36,20 @@ spec:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - "gunicorn"
+            - "--threads=10"
+            - "--certfile=/certs/tls.crt"
+            - "--keyfile=/certs/tls.key"
+            - "--ca-certs=/certs/ca.crt"
+            - "--bind=0.0.0.0:443"
+            - "--access-logfile=/dev/stdout"
+            - "namespace-admission:app"
+          env:
+            - name: CLUSTER_ROLE
+              value: admin
+            - name: USER_NAME
+              value: developer
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
