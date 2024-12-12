@@ -19,8 +19,7 @@ USER_NAME = os.getenv('USER_NAME', 'developer')
 CLUSTER_ROLE = os.getenv('CLUSTER_ROLE', 'admin')
 OPERATOR_THREAD = False
 LOG_LEVEL = logging.getLevelNamesMapping(
-    os.getenv('LOG_LEVEL', 'INFO').upper(),
-)
+)[os.getenv('LOG_LEVEL', 'INFO').upper()]
 
 app.logger.setLevel(LOG_LEVEL)
 
