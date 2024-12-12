@@ -29,4 +29,4 @@ jobs:
         role-session-name: ${{ vars.ROLE_SESSION_NAME }}
         role-arn: ${{ vars.ROLE_ARN }}
         helm-registry: s3://comet-dev-repositories/charts
-        helm-push-extra: --force
+        helm-push-extra: --force --relative
