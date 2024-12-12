@@ -20,7 +20,7 @@ jobs:
       id: helm-lint
       shell: bash
       run: |
-        helm lint helm/*/
+        helm lint charts/*/
 
     - name: package and upload to s3
       uses: comet-ml/helm_upload@main
