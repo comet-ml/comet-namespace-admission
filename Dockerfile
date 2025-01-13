@@ -1,4 +1,4 @@
-FROM python:3.13.0-alpine3.20
+FROM python:3.13.1-alpine3.21
 
 RUN pip install --upgrade pip
 ADD requirements.txt .
