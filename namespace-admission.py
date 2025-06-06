@@ -69,7 +69,14 @@ def mutate():
     admission_review = request.get_json()
     userInfo = admission_review['request']['userInfo']
     namespace = admission_review['request']['namespace']
-    sessionName = userInfo['extra']['sessionName'][0]
+    try:
+        sessionName = userInfo['extra']['sessionName'][0]
+    except KeyError:
+        # no session means no namespace prefix, so we allow it
+        app.logger.warning(
+            f'ADMISSION_CONTROLLER: sessionName not found in userInfo, using username {userInfo}',
+        )
+        return create_admission_response(admission_review, allowed=True)
     validNamespace = namespace.startswith(
         'dev-',
     ) or namespace.startswith(f'{sessionName}-')
