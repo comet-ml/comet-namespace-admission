@@ -3,9 +3,11 @@ run-name: "Helm for ${{ github.repository_owner }}/${{ github.event.repository.n
 
 on:
   push:
+    branches:
+    - main
     paths:
-    - charts/**
-    - .github/workflows/helm.yaml
+    - 'charts/**'
+    - '.github/workflows/helm.yaml'
   workflow_dispatch:
 
 jobs:

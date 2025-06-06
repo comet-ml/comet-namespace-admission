@@ -5,6 +5,10 @@ on:
   push:
     tags:
     - "v?[0-9]*.[0-9]*.[0-9]*"
+    paths:
+    - '**'
+    - '!charts/**'
+    - '!.github/workflow/helm.yaml'
   # schedule:
   # - cron: "55 5 * * *"
   workflow_dispatch:
