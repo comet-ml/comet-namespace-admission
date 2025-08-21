@@ -15,21 +15,37 @@ jobs:
     runs-on: helm
 
     steps:
-    - name: checkout
+    - name: Checkout
       uses: actions/checkout@v4
       with:
         fetch-depth: 1
+        fetch-tags: true
 
-    - name: helm lint
+    - name: Helm lint
       id: helm-lint
       shell: bash
       run: |
         helm lint charts/*/
 
-    - name: package and upload to s3
-      uses: comet-ml/helm_upload@main
+    - name: Get new version name
+      id: version
+      uses: comet-ml/gha-tools/get-new-tag@1.0.1
       with:
-        role-session-name: ${{ vars.ROLE_SESSION_NAME }}
-        role-arn: ${{ vars.ROLE_ARN }}
-        helm-registry: s3://comet-dev-repositories/charts
+        do-checkout: false
+
+    - name: Create git tag 
+      run: |
+        git tag ${{ steps.version.outputs.tag }}
+        git push origin ${{ steps.version.outputs.tag }}
+
+    - name: Package and upload to Dev Helm repo
+      uses: comet-ml/gha-tools/release/helm@1.0.1
+      with:
+        aws-region: us-east-1
+        aws-role-to-assume: ${{ vars.DEV_ACTION_RUNNER_ROLE_ARN }}
+        aws-role-session-name: ${{ vars.ROLE_SESSION_NAME }}
+        helm-registry: s3://${{ vars.DEV_REPOSITORY_BUCKET }}/charts
+        charts-path: charts
+        chart-name: namespace-admission
+        chart-version: ${{ steps.version.outputs.tag }}
         helm-push-extra: --force --relative
