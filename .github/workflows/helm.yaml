@@ -1,5 +1,6 @@
-name: "Helm Operations"
-run-name: "Helm for ${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ github.ref_name }} by @${{ github.actor }}: ${{ github.event.commits[0].message }}"
+---
+name: Release Helm chart
+run-name: "Helm for ${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ github.ref_name }} by @${{ github.actor }}"
 
 on:
   push:
@@ -11,41 +12,53 @@ on:
   workflow_dispatch:
 
 jobs:
-  helm-upload:
-    runs-on: helm
+  # ── GitHub Pages (classic helm repo) ──────────────────────────────────────
+  release:
+    name: Publish to GitHub Pages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
+    - uses: actions/checkout@v4
       with:
-        fetch-depth: 1
-        fetch-tags: true
+        fetch-depth: 0
 
-    - name: Helm lint
-      id: helm-lint
-      shell: bash
+    - name: Configure Git
       run: |
-        helm lint charts/*/
+        git config user.name "$GITHUB_ACTOR"
+        git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
 
-    - name: Get new version name
-      id: version
-      uses: comet-ml/gha-tools/get-new-tag@1.0.1
+    - uses: azure/setup-helm@v4
+
+    - uses: helm/chart-releaser-action@v1.6.0
       with:
-        do-checkout: false
+        charts_dir: charts
+        skip_existing: true
+      env:
+        CR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Create git tag 
+  # ── GHCR OCI registry ─────────────────────────────────────────────────────
+  oci:
+    name: Publish to GHCR (OCI)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: azure/setup-helm@v4
+
+    - uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Package and push
       run: |
-        git tag ${{ steps.version.outputs.tag }}
-        git push origin ${{ steps.version.outputs.tag }}
-
-    - name: Package and upload to Dev Helm repo
-      uses: comet-ml/gha-tools/release/helm@1.0.1
-      with:
-        aws-region: us-east-1
-        aws-role-to-assume: ${{ vars.DEV_ACTION_RUNNER_ROLE_ARN }}
-        aws-role-session-name: ${{ vars.ROLE_SESSION_NAME }}
-        helm-registry: s3://${{ vars.DEV_REPOSITORY_BUCKET }}/charts
-        charts-path: charts
-        chart-name: namespace-admission
-        chart-version: ${{ steps.version.outputs.tag }}
-        helm-push-extra: --force --relative
+        helm package charts/namespace-admission --destination /tmp/helm
+        helm push /tmp/helm/namespace-admission-*.tgz oci://ghcr.io/${{ github.repository_owner }}/charts
