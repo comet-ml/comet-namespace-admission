@@ -1,14 +1,24 @@
-FROM python:3.13.1-alpine3.21
+FROM --platform=$BUILDPLATFORM python:3.11-slim AS builder
 
-RUN pip install --upgrade pip
-ADD requirements.txt .
-RUN pip install --requirement requirements.txt
-ADD *.py .
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir --target=/deps -r requirements.txt
+
+FROM gcr.io/distroless/python3-debian12:nonroot
+
+COPY --from=builder /deps /app/deps
+COPY *.py /app/
+
+WORKDIR /app
+
+ENV PYTHONPATH=/app/deps
+
 EXPOSE 443
 
-ENTRYPOINT [ "gunicorn", "-w4", \
+ENTRYPOINT ["python3", "-m", "gunicorn", "-w4", \
     "--certfile=/certs/tls.crt", \
     "--keyfile=/certs/tls.key", \
-    "--ca-certs=/certs/ca.crt",\
+    "--ca-certs=/certs/ca.crt", \
     "--bind=0.0.0.0:443", "--access-logfile=/dev/stdout"]
-CMD [ "namespace-admission:operator" ]
+CMD ["namespace-admission:operator"]

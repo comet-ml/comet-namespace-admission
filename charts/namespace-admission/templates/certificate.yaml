@@ -1,0 +1,59 @@
+{{- if .Values.certManager.enabled }}
+---
+# Bootstrap issuer — only used to sign the local CA
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ include "namespace-admission.fullname" . }}-selfsigned
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "namespace-admission.labels" . | nindent 4 }}
+spec:
+  selfSigned: {}
+---
+# Local CA certificate
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "namespace-admission.fullname" . }}-ca
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "namespace-admission.labels" . | nindent 4 }}
+spec:
+  isCA: true
+  commonName: {{ include "namespace-admission.fullname" . }}-ca
+  secretName: {{ include "namespace-admission.fullname" . }}-ca
+  issuerRef:
+    name: {{ include "namespace-admission.fullname" . }}-selfsigned
+    kind: Issuer
+---
+# Issuer backed by the local CA
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: {{ include "namespace-admission.fullname" . }}-ca
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "namespace-admission.labels" . | nindent 4 }}
+spec:
+  ca:
+    secretName: {{ include "namespace-admission.fullname" . }}-ca
+---
+# Serving certificate for the webhook
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "namespace-admission.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "namespace-admission.labels" . | nindent 4 }}
+spec:
+  secretName: namespace-admission-certs
+  dnsNames:
+    - {{ include "namespace-admission.fullname" . }}
+    - {{ include "namespace-admission.fullname" . }}.{{ .Release.Namespace }}.svc
+    - {{ include "namespace-admission.fullname" . }}.{{ .Release.Namespace }}.svc.cluster.local
+  issuerRef:
+    name: {{ include "namespace-admission.fullname" . }}-ca
+    kind: Issuer
+{{- end }}

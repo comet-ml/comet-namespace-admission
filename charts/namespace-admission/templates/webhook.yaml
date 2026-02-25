@@ -2,6 +2,10 @@ apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
   name: {{ include "namespace-admission.fullname" . }}-webhook
+  {{- if .Values.certManager.enabled }}
+  annotations:
+    cert-manager.io/inject-ca-from: {{ .Release.Namespace }}/{{ include "namespace-admission.fullname" . }}
+  {{- end }}
 webhooks:
   - name: {{ include "namespace-admission.fullname" . }}.{{ .Release.Namespace }}.svc
     clientConfig:
@@ -9,7 +13,7 @@ webhooks:
         name: {{ include "namespace-admission.fullname" . }}
         namespace: {{ .Release.Namespace }}
         path: "/mutate"
-      caBundle: LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSURxekNDQXBPZ0F3SUJBZ0lVT0c4SFNDZHk1OGZURjRHZGpMMUhmdUMvbTBBd0RRWUpLb1pJaHZjTkFRRUwKQlFBd0ZURVRNQkVHQTFVRUF4TUthM1ZpWlhKdVpYUmxjekFlRncweU5ERXhNVFl4TWpJME1EQmFGdzB5TlRFeApNVFl4TWpJME1EQmFNQzR4TERBcUJnTlZCQU1USTI1aGJXVnpjR0ZqWlMxaFpHMXBjM05wYjI0dWEzVmlaUzF6CmVYTjBaVzB1YzNaak1JSUJJakFOQmdrcWhraUc5dzBCQVFFRkFBT0NBUThBTUlJQkNnS0NBUUVBdGlaU3l1aWcKeGNqVEZYZ1UrN3o3ZWFGQTNuZWZ0aHRkYkdobE5pMmtvWUxxNkUwSnQ2dUNMazNGMnhzMjJSNzQ5Sk9MempLRwpTV0ZaVG1XYjdDS1ljTHRSU1VoNFBCYUI3SWhxOG1la1U0a1lLaUd0eCtoNzNMb3g5aU9Ubi9pTGdEQS8yTWowCmRtb0VhZVJFUkNZODRXM3NvbmRnbXgyL09FdzJ1Zk1OZm5pME16aENtdGVhVGo4RzExTEt2MXJxMjNtYnE0ck8KZXpNWEo0N2U0eEdsaTluVFN1cTV3MDFMNWFKQzVkZGNWblp5RDhnQ25obFpUWldzcUZyZW5tbWtWM3NJNm9wSQp6ZGEwS3FMREVKdmdlanp5Q3o3c3grSk9NdWhZNFlOblhTNjU2ZXRnUi9lR0FUNmZnRkVQSWkyaUhFdFBVUVU2Cm82YnJQeTRMRnQ5MDl3SURBUUFCbzRIWk1JSFdNQTRHQTFVZER3RUIvd1FFQXdJRm9EQVRCZ05WSFNVRUREQUsKQmdnckJnRUZCUWNEQVRBTUJnTlZIUk1CQWY4RUFqQUFNQjBHQTFVZERnUVdCQlQwYWlaMDBIdllON2NPMm90VApSWjNtTkN6Y0V6QWZCZ05WSFNNRUdEQVdnQlR5SERVN3RIYThSemxTUXUzM2oyK3VPQWJ4UmpCaEJnTlZIUkVFCldqQllnaU51WVcxbGMzQmhZMlV0WVdSdGFYTnphVzl1TG10MVltVXRjM2x6ZEdWdExuTjJZNEl4Ym1GdFpYTncKWVdObExXRmtiV2x6YzJsdmJpNXJkV0psTFhONWMzUmxiUzV6ZG1NdVkyeDFjM1JsY2k1c2IyTmhiREFOQmdrcQpoa2lHOXcwQkFRc0ZBQU9DQVFFQWVKM1pzZktXT1JBOFJISVZ4YWFqcWR5dVZiOHVLK1FDNTMyTmxOR09YYk12CmJnNGVDblNDMWdCUnVUYmtHMm1jRWkrUDUvaTZ0MFZhOVRsdmJHZXlTaXIzUUVybno1dlZ5ZlZkV3VWQVlnV2wKcTFRd1BPTy9WMzEwVi92c3cwTmQ0RmxvZ3dWaWxLTVg1LzYzR25Xd3psOXBLdXl3amdlWGZnSUFWazlHUzdiNgpmK09xUlBJL3cvN0QrWlA4Yk0wSWNvN1lRUTMwdkh3Y1hVVEVMYTFkNUI2TDZaRmYvVmxLTE9WSnVQd21BYllvCmYybWFITFdBNnlLZFI3RTloMWYzL25LZERhUDE2QmlDUnBaTGJiaWFLU2kwY1AzeHB0VTBKUTdMMlA2REUycXgKVXZoN0hnNXBRQ1Jvb0lpTE96cVcxVjdJR1ladTdTbnNOc3B3L0NaWDJ3PT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo=
+      caBundle: {{ .Values.caBundle | default "" | quote }}
     rules:
       - operations: ["CREATE","DELETE"]
         apiGroups: [""]
